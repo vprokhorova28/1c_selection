@@ -93,6 +93,12 @@ class Database:
         return total_kcal, total_proteins, total_fats, total_carbs
     
     def delete_dish(self, dish_name):
-        query = "DELETE FROM dishes WHERE name = ?"
-        self.cursor.execute(query, (dish_name,))
-        self.conn.commit()
+        with self.connection:
+            # Удаление записей из calorie_log, связанных с блюдом
+            self.connection.execute('''
+                DELETE FROM calorie_log WHERE dish_name = ?
+            ''', (dish_name,))
+            # Удаление блюда из dishes
+            self.connection.execute('''
+                DELETE FROM dishes WHERE name = ?
+            ''', (dish_name,))

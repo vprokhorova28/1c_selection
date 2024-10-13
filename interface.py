@@ -225,6 +225,10 @@ class SearchEditDialog(QDialog):
         self.edit_button.clicked.connect(self.open_edit_dish_dialog)
         layout.addWidget(self.edit_button)
 
+        self.delete_button = QPushButton("Удалить блюдо", self)
+        self.delete_button.clicked.connect(self.delete_dish)
+        layout.addWidget(self.delete_button)
+
         self.setLayout(layout)
         self.populate_dish_list()
 
@@ -257,7 +261,24 @@ class SearchEditDialog(QDialog):
             return
 
         dialog = EditDishDialog(dish_name, dish_data, self.parent().db, self)
-        dialog.exec_()
+        if dialog.exec_() == QDialog.Accepted:
+            self.populate_dish_list()
+            self.accept()
+
+    def delete_dish(self):
+        selected_item = self.dish_list.currentItem()
+        if not selected_item:
+            QMessageBox.warning(self, "Ошибка", "Пожалуйста, выберите блюдо из списка")
+            return
+
+        dish_name = selected_item.text()
+        reply = QMessageBox.question(self, "Подтверждение", f"Вы уверены, что хотите удалить блюдо '{dish_name}'?",
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            self.parent().db.delete_dish(dish_name)
+            self.populate_dish_list()
+            self.accept()
 
 
 class EditDishDialog(QDialog):
