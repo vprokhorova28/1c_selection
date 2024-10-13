@@ -3,12 +3,14 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit, QPush
 from PyQt5.QtCore import QDate
 import matplotlib.pyplot as plt
 from db import Database
+import seaborn as sns
+import pandas as pd
 
 class CalorieApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Калькулятор калорий")
-        self.resize(800, 800)
+        self.resize(1000, 1000)
 
         self.db = Database()
 
@@ -30,6 +32,30 @@ class CalorieApp(QWidget):
 
         kbju_group.setLayout(kbju_layout)
         layout.addWidget(kbju_group)
+
+        # Блок для построения графика динамики
+        dynamic_plot_group = QGroupBox("Динамика потребляемых калорий")
+        dynamic_plot_layout = QVBoxLayout()
+
+        date_layout = QHBoxLayout()
+        self.start_date_input = QDateEdit(self)
+        self.start_date_input.setDate(QDate.currentDate().addDays(-7))
+        date_layout.addWidget(QLabel("Начальная дата:"))
+        date_layout.addWidget(self.start_date_input)
+
+        self.end_date_input = QDateEdit(self)
+        self.end_date_input.setDate(QDate.currentDate())
+        date_layout.addWidget(QLabel("Конечная дата:"))
+        date_layout.addWidget(self.end_date_input)
+
+        plot_button = QPushButton('Посмотреть динамику потребляемых калорий', self)
+        plot_button.clicked.connect(self.plot_calories)
+
+        dynamic_plot_layout.addWidget(plot_button)
+        dynamic_plot_layout.addLayout(date_layout)
+
+        dynamic_plot_group.setLayout(dynamic_plot_layout)
+        layout.addWidget(dynamic_plot_group)
 
         # Блок для отображения потребленных калорий сегодня
         summary_group = QGroupBox("Потреблено сегодня:")
@@ -79,11 +105,6 @@ class CalorieApp(QWidget):
         edit_dish_button = QPushButton('Поиск и редактирование блюд', self)
         edit_dish_button.clicked.connect(self.open_search_edit_dialog)
         layout.addWidget(edit_dish_button)
-
-        # построение графика
-        plot_button = QPushButton('Построить график', self)
-        plot_button.clicked.connect(self.plot_calories)
-        layout.addWidget(plot_button)
 
         self.setLayout(layout)
 
@@ -148,42 +169,57 @@ class CalorieApp(QWidget):
         self.populate_dish_list()
 
     def plot_calories(self):
-        data = self.db.get_data_by_date()
-        dates = [item[0] for item in data]
-        calories = [item[1] for item in data]
+        start_date = self.start_date_input.date().toString("yyyy-MM-dd")
+        end_date = self.end_date_input.date().toString("yyyy-MM-dd")
 
-        plt.figure(figsize=(10, 6))
-        plt.plot(dates, calories, marker='o')
-        plt.title('Потребление калорий за время')
+        calorie_data = self.db.get_calorie_data_by_date_range(start_date, end_date)
+        if not calorie_data:
+            QMessageBox.warning(self, "Ошибка", "Нет данных за выбранный период.")
+            return
+
+        df = pd.DataFrame(calorie_data, columns=["date", "total_kcal", "total_proteins", "total_fats", "total_carbs"])
+
+        sns.set_palette("Set2")
+
+        plt.figure(figsize=(12, 6))
+        sns.lineplot(data=df, x="date", y="total_kcal", label="Калории", marker='o')
+        sns.lineplot(data=df, x="date", y="total_proteins", label="Белки", marker='o')
+        sns.lineplot(data=df, x="date", y="total_fats", label="Жиры", marker='o')
+        sns.lineplot(data=df, x="date", y="total_carbs", label="Углеводы", marker='o')
+
+        plt.title('Динамика потребляемых КБЖУ')
         plt.xlabel('Дата')
-        plt.ylabel('Калории (ккал)')
+        plt.ylabel('Количество (г)')
+        plt.xticks(rotation=45)
+        plt.legend()
+        plt.tight_layout()
         plt.show()
 
 
-class AddDishDialog(QDialog):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Добавить новое блюдо")
+    class AddDishDialog(QDialog):
+        def __init__(self, parent=None):
+            super().__init__(parent)
+            self.setWindowTitle("Добавить новое блюдо")
 
-        layout = QFormLayout()
+            layout = QFormLayout()
 
-        self.dish_name = QLineEdit(self)
-        self.kcal = QLineEdit(self)
-        self.proteins = QLineEdit(self)
-        self.fats = QLineEdit(self)
-        self.carbs = QLineEdit(self)
+            self.dish_name = QLineEdit(self)
+            self.kcal = QLineEdit(self)
+            self.proteins = QLineEdit(self)
+            self.fats = QLineEdit(self)
+            self.carbs = QLineEdit(self)
 
-        layout.addRow("Название блюда", self.dish_name)
-        layout.addRow("Калории (на 100г)", self.kcal)
-        layout.addRow("Белки (г)", self.proteins)
-        layout.addRow("Жиры (г)", self.fats)
-        layout.addRow("Углеводы (г)", self.carbs)
+            layout.addRow("Название блюда", self.dish_name)
+            layout.addRow("Калории (на 100г)", self.kcal)
+            layout.addRow("Белки (г)", self.proteins)
+            layout.addRow("Жиры (г)", self.fats)
+            layout.addRow("Углеводы (г)", self.carbs)
 
-        add_button = QPushButton("Добавить", self)
-        add_button.clicked.connect(self.add_dish)
-        layout.addWidget(add_button)
+            add_button = QPushButton("Добавить", self)
+            add_button.clicked.connect(self.add_dish)
+            layout.addWidget(add_button)
 
-        self.setLayout(layout)
+            self.setLayout(layout)
 
     def add_dish(self):
         name = self.dish_name.text()

@@ -102,3 +102,25 @@ class Database:
             self.connection.execute('''
                 DELETE FROM dishes WHERE name = ?
             ''', (dish_name,))
+
+    def get_calorie_data_by_date_range(self, start_date, end_date):
+        cursor = self.connection.execute("""
+            SELECT 
+                cl.date,
+                SUM(cl.grams * (d.kcal / 100)) AS total_kcal,
+                SUM(cl.grams * (d.proteins / 100)) AS total_proteins,
+                SUM(cl.grams * (d.fats / 100)) AS total_fats,
+                SUM(cl.grams * (d.carbs / 100)) AS total_carbs
+            FROM 
+                calorie_log cl
+            JOIN 
+                dishes d ON cl.dish_name = d.name
+            WHERE 
+                cl.date BETWEEN ? AND ?
+            GROUP BY 
+                cl.date
+            ORDER BY 
+                cl.date
+        """, (start_date, end_date))
+
+        return cursor.fetchall()
