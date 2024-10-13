@@ -1,6 +1,6 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from interface import CalorieApp
+from app import CalorieApp
 
 
 if __name__ == "__main__":

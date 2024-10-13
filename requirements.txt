@@ -1,0 +1,4 @@
+PyQT5
+matplotlib
+seaborn
+pandas
