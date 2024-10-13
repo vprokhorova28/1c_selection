@@ -51,7 +51,6 @@ class Database:
 
     def track_calories(self, dish_name, grams, date):
         dish = self.get_dish(dish_name)
-        print(dish)
         if dish:
             kcal_per_100g = dish[0]
             total_calories = (kcal_per_100g / 100) * grams
