@@ -71,24 +71,30 @@ class CalorieApp(QWidget):
         food_group = QGroupBox("Добавление приема пищи")
         food_layout = QVBoxLayout()
         
-        # добавление приема пищи: выбор блюда
+        # Поле для поиска блюда
+        self.search_line = QLineEdit(self)
+        self.search_line.setPlaceholderText("Поиск блюда...")
+        self.search_line.textChanged.connect(self.filter_dish_list)
+        food_layout.addWidget(self.search_line)
+
+        # Список для выбора блюда
         self.dish_list = QListWidget(self)
         self.populate_dish_list()
         food_layout.addWidget(QLabel("Выберите блюдо:"))
         food_layout.addWidget(self.dish_list)
 
-        # поле, чтобы ввести граммы добавляемой пищи
+        # Поле, чтобы ввести граммы добавляемой пищи
         self.grams_input = QLineEdit(self)
         self.grams_input.setPlaceholderText("Введите количество граммов")
         food_layout.addWidget(self.grams_input)
 
-        # поле выбора даты для добавляемой пищи
+        # Поле выбора даты для добавляемой пищи
         self.date_input = QDateEdit(self)
         self.date_input.setDate(QDate.currentDate())
         food_layout.addWidget(QLabel("Выберите дату, к которой добавить прием пищи:"))
         food_layout.addWidget(self.date_input)
 
-        # добавление приема пищи: кнопка
+        # Добавление приема пищи: кнопка
         add_calories_button = QPushButton('Добавить прием пищи', self)
         add_calories_button.clicked.connect(self.add_calories_from_dish)
         food_layout.addWidget(add_calories_button)
@@ -96,12 +102,12 @@ class CalorieApp(QWidget):
         food_group.setLayout(food_layout)
         layout.addWidget(food_group)
 
-        # добавление нового блюда
+        # Добавление нового блюда
         add_dish_button = QPushButton('Добавить новое блюдо', self)
         add_dish_button.clicked.connect(self.open_add_dish_dialog)
         layout.addWidget(add_dish_button)
 
-        # поиск и редактирование блюд
+        # Поиск и редактирование блюд
         edit_dish_button = QPushButton('Поиск и редактирование блюд', self)
         edit_dish_button.clicked.connect(self.open_search_edit_dialog)
         layout.addWidget(edit_dish_button)
@@ -159,7 +165,7 @@ class CalorieApp(QWidget):
         self.update_today_summary()
 
     def open_add_dish_dialog(self):
-        dialog = AddDishDialog(self)
+        dialog = self.AddDishDialog(self)
         dialog.exec_()
         self.populate_dish_list()
 
@@ -194,6 +200,15 @@ class CalorieApp(QWidget):
         plt.legend()
         plt.tight_layout()
         plt.show()
+    
+    def filter_dish_list(self):
+            search_text = self.search_line.text().lower()
+            self.dish_list.clear()
+            dishes = self.db.get_dishes()
+            for dish in dishes:
+                name, _, _, _, _ = dish
+                if search_text in name.lower():
+                    self.dish_list.addItem(name)
 
 
     class AddDishDialog(QDialog):
@@ -221,24 +236,24 @@ class CalorieApp(QWidget):
 
             self.setLayout(layout)
 
-    def add_dish(self):
-        name = self.dish_name.text()
-        try:
-            kcal = float(self.kcal.text())
-            proteins = float(self.proteins.text())
-            fats = float(self.fats.text())
-            carbs = float(self.carbs.text())
-        except ValueError:
-            QMessageBox.warning(self, "Ошибка", "Некорректные данные")
-            return
+        def add_dish(self):
+            name = self.dish_name.text()
+            try:
+                kcal = float(self.kcal.text())
+                proteins = float(self.proteins.text())
+                fats = float(self.fats.text())
+                carbs = float(self.carbs.text())
+            except ValueError:
+                QMessageBox.warning(self, "Ошибка", "Некорректные данные")
+                return
 
-        try:
-            parent_db = self.parent().db
-            parent_db.add_dish(name, kcal, proteins, fats, carbs)
-            QMessageBox.information(self, "Успех", f"Блюдо {name} добавлено!")
-            self.accept()
-        except ValueError as e:
-            QMessageBox.warning(self, "Ошибка", str(e))
+            try:
+                parent_db = self.parent().db
+                parent_db.add_dish(name, kcal, proteins, fats, carbs)
+                QMessageBox.information(self, "Успех", f"Блюдо {name} добавлено!")
+                self.accept()
+            except ValueError as e:
+                QMessageBox.warning(self, "Ошибка", str(e))
 
 
 class SearchEditDialog(QDialog):
