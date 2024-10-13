@@ -69,8 +69,30 @@ class Database:
             return total_calories
         return 0
 
-    def get_calories_by_date(self, date):
-        cursor = self.connection.execute("SELECT SUM((grams * (SELECT kcal FROM dishes WHERE name=calorie_log.dish_name) / 100)) "
-                            "FROM calorie_log WHERE date=?", (date,))
+    def get_data_by_date(self, date):
+        cursor = self.connection.execute("""
+            SELECT 
+                SUM(grams * (d.kcal / 100)) AS total_kcal,
+                SUM(grams * (d.proteins / 100)) AS total_proteins,
+                SUM(grams * (d.fats / 100)) AS total_fats,
+                SUM(grams * (d.carbs / 100)) AS total_carbs
+            FROM 
+                calorie_log cl
+            JOIN 
+                dishes d ON cl.dish_name = d.name
+            WHERE 
+                cl.date = ?
+        """, (date,))
+
         result = cursor.fetchone()
-        return result[0] if result[0] is not None else 0
+        total_kcal = result[0] if result[0] is not None else 0
+        total_proteins = result[1] if result[1] is not None else 0
+        total_fats = result[2] if result[2] is not None else 0
+        total_carbs = result[3] if result[3] is not None else 0
+
+        return total_kcal, total_proteins, total_fats, total_carbs
+    
+    def delete_dish(self, dish_name):
+        query = "DELETE FROM dishes WHERE name = ?"
+        self.cursor.execute(query, (dish_name,))
+        self.conn.commit()

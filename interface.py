@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel,
+from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QFormLayout, QLineEdit, QPushButton, QLabel, QGroupBox,
                              QDialog, QInputDialog, QMessageBox, QListWidget, QDateEdit, QHBoxLayout)
 from PyQt5.QtCore import QDate
 import matplotlib.pyplot as plt
@@ -8,39 +8,67 @@ class CalorieApp(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Калькулятор калорий")
-        self.resize(400, 300)
+        self.resize(800, 800)
 
         self.db = Database()
 
         layout = QVBoxLayout()
 
-        # отображение калорий, потребленных сегодня
-        self.calories_today_label = QLabel("Потребленo: 0 ккал", self)
-        layout.addWidget(self.calories_today_label)
+        # Блок для отображения КБЖУ за выбранную дату
+        kbju_group = QGroupBox("КБЖУ за выбранную дату")
+        kbju_layout = QVBoxLayout()
+        self.check_date_label = QLabel("Выберите дату для просмотра потребленного КБЖУ:")
+        kbju_layout.addWidget(self.check_date_label)
 
-        self.update_calories_today()
+        self.check_date_input = QDateEdit(self)
+        self.check_date_input.setDate(QDate.currentDate())
+        kbju_layout.addWidget(self.check_date_input)
 
+        check_kbju_button = QPushButton('Показать КБЖУ', self)
+        check_kbju_button.clicked.connect(self.show_kbju_for_date)
+        kbju_layout.addWidget(check_kbju_button)
+
+        kbju_group.setLayout(kbju_layout)
+        layout.addWidget(kbju_group)
+
+        # Блок для отображения потребленных калорий сегодня
+        summary_group = QGroupBox("Потреблено сегодня:")
+        summary_layout = QVBoxLayout()
+        self.summary_label = QLabel("Ккал: 0\n"
+                                     "Б: 0 г,\nЖ: 0 г,\nУ: 0 г\n", self)
+        summary_layout.addWidget(self.summary_label)
+        self.update_today_summary()
+        summary_group.setLayout(summary_layout)
+        layout.addWidget(summary_group)
+
+        # Блок для добавления приема пищи
+        food_group = QGroupBox("Добавление приема пищи")
+        food_layout = QVBoxLayout()
+        
         # добавление приема пищи: выбор блюда
         self.dish_list = QListWidget(self)
         self.populate_dish_list()
-        layout.addWidget(QLabel("Выберите блюдо для добавления приема пищи:"))
-        layout.addWidget(self.dish_list)
+        food_layout.addWidget(QLabel("Выберите блюдо:"))
+        food_layout.addWidget(self.dish_list)
 
         # поле, чтобы ввести граммы добавляемой пищи
         self.grams_input = QLineEdit(self)
         self.grams_input.setPlaceholderText("Введите количество граммов")
-        layout.addWidget(self.grams_input)
+        food_layout.addWidget(self.grams_input)
 
         # поле выбора даты для добавляемой пищи
         self.date_input = QDateEdit(self)
         self.date_input.setDate(QDate.currentDate())
-        layout.addWidget(QLabel("Выберите дату:"))
-        layout.addWidget(self.date_input)
+        food_layout.addWidget(QLabel("Выберите дату, к которой добавить прием пищи:"))
+        food_layout.addWidget(self.date_input)
 
         # добавление приема пищи: кнопка
         add_calories_button = QPushButton('Добавить прием пищи', self)
         add_calories_button.clicked.connect(self.add_calories_from_dish)
-        layout.addWidget(add_calories_button)
+        food_layout.addWidget(add_calories_button)
+
+        food_group.setLayout(food_layout)
+        layout.addWidget(food_group)
 
         # добавление нового блюда
         add_dish_button = QPushButton('Добавить новое блюдо', self)
@@ -59,10 +87,27 @@ class CalorieApp(QWidget):
 
         self.setLayout(layout)
 
-    def update_calories_today(self):
+    def show_kbju_for_date(self):
+        selected_date = self.check_date_input.date().toString("yyyy-MM-dd")
+        total_calories, total_proteins, total_fats, total_carbs = self.db.get_data_by_date(selected_date)
+        
+        result_message = (
+            f"Потреблено за {selected_date}:\n"
+            f"Калории: {total_calories:.2f} ккал\n"
+            f"Белки: {total_proteins:.2f} г\n"
+            f"Жиры: {total_fats:.2f} г\n"
+            f"Углеводы: {total_carbs:.2f} г"
+        )
+
+        QMessageBox.information(self, "КБЖУ за выбранную дату", result_message)
+
+    def update_today_summary(self):
         today_date = QDate.currentDate().toString("yyyy-MM-dd")
-        total_calories = self.db.get_calories_by_date(today_date)
-        self.calories_today_label.setText(f"Потребленные сегодня калории: {total_calories:.2f} ккал")
+        total_calories, total_proteins, total_fats, total_carbs = self.db.get_data_by_date(today_date)
+        self.summary_label.setText(
+            f"Ккал: {total_calories:.2f}\n"
+            f"Б: {total_proteins:.2f} г,\nЖ: {total_fats:.2f} г,\nУ: {total_carbs:.2f} г\n"
+        )
 
     def populate_dish_list(self):
         self.dish_list.clear()
@@ -90,7 +135,7 @@ class CalorieApp(QWidget):
         date = self.date_input.date().toString("yyyy-MM-dd")
         total_calories = self.db.track_calories(dish_name, grams, date)
         QMessageBox.information(self, "Результат", f"{total_calories:.2f} ккал добавлено из {dish_name}.")
-        self.update_calories_today()
+        self.update_today_summary()
 
     def open_add_dish_dialog(self):
         dialog = AddDishDialog(self)
@@ -103,7 +148,7 @@ class CalorieApp(QWidget):
         self.populate_dish_list()
 
     def plot_calories(self):
-        data = self.db.get_calories_by_date()
+        data = self.db.get_data_by_date()
         dates = [item[0] for item in data]
         calories = [item[1] for item in data]
 
