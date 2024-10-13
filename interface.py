@@ -7,12 +7,18 @@ from db import Database
 class CalorieApp(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Калькулятор Калорий Тора")
+        self.setWindowTitle("Калькулятор калорий")
         self.resize(400, 300)
 
         self.db = Database()
 
         layout = QVBoxLayout()
+
+        # отображение калорий, потребленных сегодня
+        self.calories_today_label = QLabel("Потребленo: 0 ккал", self)
+        layout.addWidget(self.calories_today_label)
+
+        self.update_calories_today()
 
         # добавление приема пищи: выбор блюда
         self.dish_list = QListWidget(self)
@@ -53,6 +59,11 @@ class CalorieApp(QWidget):
 
         self.setLayout(layout)
 
+    def update_calories_today(self):
+        today_date = QDate.currentDate().toString("yyyy-MM-dd")
+        total_calories = self.db.get_calories_by_date(today_date)
+        self.calories_today_label.setText(f"Потребленные сегодня калории: {total_calories:.2f} ккал")
+
     def populate_dish_list(self):
         self.dish_list.clear()
         dishes = self.db.get_dishes()
@@ -79,6 +90,7 @@ class CalorieApp(QWidget):
         date = self.date_input.date().toString("yyyy-MM-dd")
         total_calories = self.db.track_calories(dish_name, grams, date)
         QMessageBox.information(self, "Результат", f"{total_calories:.2f} ккал добавлено из {dish_name}.")
+        self.update_calories_today()
 
     def open_add_dish_dialog(self):
         dialog = AddDishDialog(self)

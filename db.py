@@ -46,8 +46,14 @@ class Database:
         return cursor.fetchall()
 
     def get_dish(self, name):
-        cursor = self.connection.execute('SELECT kcal FROM dishes WHERE name = ?', (name,))
+        cursor = self.connection.execute('SELECT kcal, proteins, fats, carbs FROM dishes WHERE name = ?', (name,))
         return cursor.fetchone()
+    
+    def update_dish(self, old_name, name, kcal, proteins, fats, carbs):
+        with self.connection:
+            self.connection.execute('''
+                UPDATE dishes SET name = ?, kcal = ?, proteins = ?, fats = ?, carbs = ? WHERE name = ?
+            ''', (name, kcal, proteins, fats, carbs, old_name))
 
     def track_calories(self, dish_name, grams, date):
         dish = self.get_dish(dish_name)
@@ -63,9 +69,8 @@ class Database:
             return total_calories
         return 0
 
-    def get_calories_by_date(self):
-        cursor = self.connection.execute('''
-            SELECT date, SUM(total_kcal) FROM consumption
-            GROUP BY date
-        ''')
-        return cursor.fetchall()
+    def get_calories_by_date(self, date):
+        cursor = self.connection.execute("SELECT SUM((grams * (SELECT kcal FROM dishes WHERE name=calorie_log.dish_name) / 100)) "
+                            "FROM calorie_log WHERE date=?", (date,))
+        result = cursor.fetchone()
+        return result[0] if result[0] is not None else 0
